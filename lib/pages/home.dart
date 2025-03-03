@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart'; //import for handling image selection from gallery or camera
 import 'package:itemize/pages/item_details.dart';
 import 'package:itemize/pages/room_details.dart';
 import 'package:provider/provider.dart';
-import 'package:itemize/providers/room_data_provider.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:itemize/providers/room_data_provider.dart'; //import for room data management
+import 'package:path_provider/path_provider.dart'; //import for accessing device's file system
+import 'package:path/path.dart' as path; //import for path manipulation
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatefulWidget { //StatefulWidget because it needs to update dynamically the UI
   const HomePage({super.key});
 
   @override
@@ -16,131 +16,109 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Dichiarazioni per image_picker e scaffold
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final ImagePicker _picker = ImagePicker();
-  File? _selectedImage;
-  String? _savedImagePath;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); //access Scaffold widget
+  final ImagePicker _picker = ImagePicker(); //select images
+  File? _selectedImage; //variable for storing selected image file
+  String? _savedImagePath; //variable for storing the path of saved image
 
-  // Controllers e variabili per gestione item e room
-  final TextEditingController _itemNameController = TextEditingController();
-  final TextEditingController _itemDescriptionController = TextEditingController();
-  final TextEditingController _itemCategoryController = TextEditingController();
-  final TextEditingController _itemRoomController = TextEditingController();
-  final TextEditingController _itemImageController = TextEditingController();
-  final TextEditingController _roomNameController = TextEditingController();
-  final TextEditingController _roomImageController = TextEditingController();
-  late String? selectedRoom;
+  // Text controllers
+  final TextEditingController _itemNameController = TextEditingController(); //controller for item name input
+  final TextEditingController _itemDescriptionController = TextEditingController(); //controller for item description input
+  final TextEditingController _itemCategoryController = TextEditingController(); //controller for item category input
+  final TextEditingController _itemImageController = TextEditingController(); //controller for item image input
+  final TextEditingController _roomNameController = TextEditingController(); //controller for room name input
+  final TextEditingController _roomImageController = TextEditingController(); //controller for room image input
+  late String? selectedRoom; //store currently selected room
 
-  bool _isSearching = false;
-  String _searchQuery = "";
-  List<Map<String, dynamic>> _filteredRooms = [];
-  List<Map<String, dynamic>> _filteredItems = [];
+  // Variables for searching
+  bool _isSearching = false; //check if search is active
+  String _searchQuery = ""; //store current search query
+  List<Map<String, dynamic>> _filteredItems = []; //store filtered items based on search
 
   @override
   void initState() {
     super.initState();
-    _filteredRooms = context.read<RoomDataProvider>().rooms;
-    selectedRoom = null;
+    selectedRoom = null; //initialize selectedRoom ro null
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _filteredRooms = context.watch<RoomDataProvider>().rooms;
-  }
-
-  // Quando la query è vuota vengono visualizzate le stanze, altrimenti si filtrano gli oggetti (items)
   void _searchRooms(String query) {
     setState(() {
-      _searchQuery = query;
+      _searchQuery = query; //update current search text
       if (query.isEmpty) {
-        _filteredRooms = context.read<RoomDataProvider>().rooms;
-        _filteredItems = [];
+        _filteredItems = []; //clear item list
       } else {
-        List<Map<String, dynamic>> items = [];
-        for (var room in context.read<RoomDataProvider>().rooms) {
-          for (var item in room['items']) {
-            if (item['name'].toLowerCase().contains(query.toLowerCase()) ||
-                item['description'].toLowerCase().contains(query.toLowerCase()) ||
-                item['category'].toLowerCase().contains(query.toLowerCase())) {
-              items.add(item);
+        List<Map<String, dynamic>> items = []; //temporary list for matching items
+        for (var room in context.read<RoomDataProvider>().rooms) { //iterates through each room
+          for (var item in room['items']) { //iterates through each item in the room
+            if (item['name'].toLowerCase().contains(query.toLowerCase()) || //check if the query matches item's name
+                item['description'].toLowerCase().contains(query.toLowerCase()) || //check if the query matches item's description
+                item['category'].toLowerCase().contains(query.toLowerCase())) { //check if the query matches item's category
+              items.add(item); //add matching item to the temporary list
             }
           }
         }
-        _filteredItems = items;
-        _filteredRooms = [];
+        _filteredItems = items; //update filtered items list with matching items
       }
     });
   }
 
-  // Modifica: aggiunto parametro opzionale dialogSetState per aggiornare anche il dialog
-  Future<void> _pickImage(ImageSource source, {Function(void Function())? dialogSetState}) async {
+  Future<void> pickAndSaveImage(XFile pickedFile, {
+    Function(void Function())? dialogSetState}) async { //asynchronously save picked image
     try {
-      final XFile? pickedFile = await _picker.pickImage(source: source);
-      if (pickedFile != null) {
-        await pickAndSaveImage(pickedFile, dialogSetState: dialogSetState);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error picking image')),
-      );
-    }
-  }
-
-  // Modifica: aggiunto parametro opzionale dialogSetState per aggiornare anche il dialog
-  Future<void> pickAndSaveImage(XFile pickedFile, {Function(void Function())? dialogSetState}) async {
-    try {
-      final imageBytes = await pickedFile.readAsBytes();
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = path.basename(pickedFile.path);
-      final filePath = '${directory.path}/$fileName';
-      final imageFile = File(filePath);
-      await imageFile.writeAsBytes(imageBytes);
+      final imageBytes = await pickedFile.readAsBytes(); //read image data
+      final directory = await getApplicationDocumentsDirectory(); //get the application's document directory
+      final fileName = path.basename(pickedFile.path); //extracts from provided file path its filename
+      final filePath = '${directory.path}/$fileName'; //constructs the path where the image will be saved
+      final imageFile = File(filePath); //create File object representing image file
+      await imageFile.writeAsBytes(imageBytes); //save image to the device
 
       setState(() {
-        _selectedImage = imageFile;
-        _savedImagePath = filePath;
-        _roomImageController.text = filePath; // Update room image controller
+        _selectedImage = imageFile; //update _selectedImage variable with new imageFile
+        _savedImagePath = filePath; //update _savedImagePath variable with full path of the saved image
+        _roomImageController.text = filePath; // Update text controller for room image input with the new file path
       });
 
       if (dialogSetState != null) {
-        dialogSetState(() {});
+        dialogSetState(() {}); //when called refresh the dialog's UI
       }
 
-      print('Immagine salvata in: $filePath');
-    } catch (e) {
-      print('Error saving image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e) { //catch exceptions during image saving
+      ScaffoldMessenger.of(context).showSnackBar( //show snackbar if an error occurs
         const SnackBar(content: Text('Error saving image')),
       );
     }
   }
 
-  // Modifica: aggiunto parametro opzionale dialogSetState per aggiornare anche il dialog
-  void _showImageSourceDialog({Function(void Function())? dialogSetState}) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Select Image Source'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+  void _showImageSourceDialog({ //display dialog allowing the user to choose between selecting an image from gallery or camera
+    Function(void Function())? dialogSetState}) { //dialogSetState updates the dialog's UI after image selection
+    showDialog( //open dialog box
+      context: context, //specified context (current build) for the dialog
+      builder: (BuildContext context) { //create dialog's content
+        return AlertDialog( //create AlertDialog widget
+          title: const Text('Select image source'), //dialog's title
+          content: Column( //arrange content vertically
+            mainAxisSize: MainAxisSize.min, //column takes up the minimum necessary space
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
+              ListTile( //list for selecting the gallery
+                leading: const Icon(Icons.photo_library), //icon on the left
                 title: const Text('Gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery, dialogSetState: dialogSetState);
+                onTap: () async {
+                  Navigator.pop(context); //close the dialog
+                  final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery); //pick image from the gallery
+                  if (pickedFile != null) { //check if image was successfully picked
+                    await pickAndSaveImage(pickedFile, dialogSetState: dialogSetState); //save picked image and update the dialog
+                  }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
+              ListTile( //ListTile for selecting the camera
+                leading: const Icon(Icons.camera_alt), //icon on the left
                 title: const Text('Camera'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera, dialogSetState: dialogSetState);
+                onTap: () async {
+                  Navigator.pop(context); //close the dialog
+                  final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera); //pick image from the camera
+                  if (pickedFile != null) { //check if image was successfully picked
+                    await pickAndSaveImage(pickedFile, dialogSetState: dialogSetState); //save picked image and update the dialog
+                  }
                 },
               ),
             ],
@@ -150,117 +128,117 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _addNewItem() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add New Item'),
-          content: SingleChildScrollView(
-            child: StatefulBuilder(
-                builder: (context, setState) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
+  void _addNewItem() { //display dialog allowing the user to add a new item
+    showDialog( //show dialog box
+      context: context, //specified context (current build) for the dialog
+      builder: (BuildContext context) { //create dialog's content
+        return AlertDialog( //create AlertDialog widget
+          title: const Text('Add new item'), //dialog's title
+          content: SingleChildScrollView( //allow scrolling if context exceed available space
+            child: StatefulBuilder( //allow updating the UI within the dialogue
+                builder: (context, setState) { //create dialog's content (setState updates the UI within the dialog)
+                  return Column( //arrange content vertically
+                    mainAxisSize: MainAxisSize.min, //column takes up the minimum necessary space
                     children: [
-                      TextField(
+                      TextField( //item's name
                         controller: _itemNameController,
-                        decoration: const InputDecoration(labelText: 'Item Name'),
+                        decoration: const InputDecoration(labelText: 'Item name'),
                       ),
-                      TextField(
+                      TextField( //item's category
                         controller: _itemCategoryController,
                         decoration: const InputDecoration(labelText: 'Category'),
                       ),
-                      TextField(
+                      TextField( //item's description
                         controller: _itemDescriptionController,
                         decoration: const InputDecoration(labelText: 'Description'),
                       ),
-                      DropdownButtonFormField<String?>(
-                        value: selectedRoom,
+                      DropdownButtonFormField<String?>( //Dropdown menu for selecting the room
+                        value: selectedRoom, //currently selected room
                         decoration: const InputDecoration(labelText: 'Room'),
-                        items: context.watch<RoomDataProvider>().rooms.map((room) {
-                          return DropdownMenuItem<String?>(
-                            value: room['name'],
-                            child: Text(room['name']),
+                        items: context.watch<RoomDataProvider>().rooms.map((room) { //iterates through rooms from RoomDataProvider and transforms each into a list item
+                          return DropdownMenuItem<String?>( //create a DropDownMenu item for each room
+                            value: room['name'], //set value of the DropDown item to the room's name
+                            child: Text(room['name']), //show room's name in the DropDown
                           );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedRoom = value;
+                        }).toList(), //convert mapped list to list
+                        onChanged: (value) { //called when the selected room changes
+                          setState(() { //update UI state
+                            selectedRoom = value; //update selectedRoom variable
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
-                      if (_selectedImage != null)
-                        Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: FileImage(_selectedImage!),
-                              fit: BoxFit.cover,
+                      const SizedBox(height: 16), //add vertical space
+                      if (_selectedImage != null) //render a preview if an image was selected
+                        Container( //container to show selected image
+                          height: 100, //container height
+                          width: 100, //container width
+                          decoration: BoxDecoration( //set container decoration
+                            image: DecorationImage( //set image decoration
+                              image: FileImage(_selectedImage!), //FileImage widget in order to show the selected image
+                              fit: BoxFit.cover, //ensure image covers the entire container
                             ),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8), //round corners for the container
                           ),
                         ),
-                      ElevatedButton.icon(
+                      ElevatedButton.icon( //ElevatedButton for selecting an image
                         onPressed: () {
-                          _showImageSourceDialog(dialogSetState: setState);
+                          _showImageSourceDialog(dialogSetState: setState); //show ImageSourceDialog and update the UI
                         },
-                        icon: const Icon(Icons.image),
-                        label: const Text('Select Image'),
+                        icon: const Icon(Icons.image), //image icon
+                        label: const Text('Select image'),
                       ),
                     ],
                   );
                 }
             ),
           ),
-          actions: [
-            TextButton(
+          actions: [ //list of actions for the dialog
+            TextButton( //add item button
               onPressed: () {
-                Navigator.of(context).pop();
-                if (selectedRoom != null && _itemNameController.text.trim().isNotEmpty) {
-                  bool itemAdded = context.read<RoomDataProvider>().addItem(
-                    _itemNameController.text,
-                    _itemDescriptionController.text,
-                    _itemCategoryController.text,
-                    _savedImagePath ?? '',
-                    selectedRoom!,
+                Navigator.of(context).pop(); //close the dialog
+                if (selectedRoom != null && _itemNameController.text.trim().isNotEmpty) { //check if a room is selected and the item name is not empty
+                  bool itemAdded = context.read<RoomDataProvider>().addItem( //add the item using RoomDataProvider
+                    _itemNameController.text, //item name
+                    _itemDescriptionController.text, //item description
+                    _itemCategoryController.text, //item category
+                    _savedImagePath ?? '', //item image path (or empty string if there is no image)
+                    selectedRoom!, //selected room
                   );
-                  if (!itemAdded) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (!itemAdded) { //check if the item was successfully added
+                    ScaffoldMessenger.of(context).showSnackBar( //show snackbar if an error occurs
                       const SnackBar(content: Text('Error adding item')),
                     );
                   }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                } else { //if a room is not selected or the item name is empty
+                  ScaffoldMessenger.of(context).showSnackBar( //show snackbar
                     const SnackBar(content: Text('Please enter a name and select a room')),
                   );
                 }
-                _itemNameController.clear();
-                _itemDescriptionController.clear();
-                _itemCategoryController.clear();
-                _itemImageController.clear();
-                Navigator.pop(context);
-                setState(() {
-                  _selectedImage = null;
-                  _savedImagePath = null;
-                  selectedRoom = null;
+                _itemNameController.clear(); //clear item's name text field
+                _itemDescriptionController.clear(); //clear item's description text field
+                _itemCategoryController.clear(); //clear item's category text field
+                _itemImageController.clear(); //clear item's image path text field
+                Navigator.pop(context); //close the dialog
+                setState(() { //update UI state
+                  _selectedImage = null; //reset selected image
+                  _savedImagePath = null; //reset saved image path
+                  selectedRoom = null; //reset selected room
                 });
               },
-              child: const Text('Add Item'),
+              child: const Text('Add item'),
             ),
-            TextButton(
+            TextButton( //cancel button (item)
               onPressed: () {
-                setState(() {
-                  _selectedImage = null;
-                  _savedImagePath = null;
-                  selectedRoom = null;
+                setState(() { //update UI state
+                  _selectedImage = null; //reset selected image
+                  _savedImagePath = null; //reset saved image path
+                  selectedRoom = null; //reset selected room
                 });
-                _itemNameController.clear();
-                _itemDescriptionController.clear();
-                _itemCategoryController.clear();
-                _itemImageController.clear();
-                Navigator.of(context).pop();
+                _itemNameController.clear(); //clear item's name text field
+                _itemDescriptionController.clear(); //clear item's description text field
+                _itemCategoryController.clear(); //clear item's category text field
+                _itemImageController.clear(); //clear item's image path text field
+                Navigator.of(context).pop(); //close the dialog
               },
               child: const Text('Cancel'),
             ),
@@ -270,190 +248,192 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _addNewRoom() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Add New Room'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _roomNameController,
-                    decoration: const InputDecoration(labelText: 'Room Name'),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_selectedImage != null)
-                    Container(
-                      height: 100,
-                      width: 100,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: FileImage(_selectedImage!),
-                          fit: BoxFit.cover,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _showImageSourceDialog(dialogSetState: setState);
-                    },
-                    icon: const Icon(Icons.image),
-                    label: const Text('Select Image'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    if (_roomNameController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a room name')),
-                      );
-                      return;
-                    }
-
-                    bool roomAdded = context.read<RoomDataProvider>().addRoom(
-                      _roomNameController.text,
-                      _savedImagePath ?? '',  // Use saved image path
-                    );
-
-                    if (!roomAdded) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Room already exists')),
-                      );
-                    } else {
-                      _roomNameController.clear();
-                      _roomImageController.clear();
-                      Navigator.of(context).pop();
-                      setState(() {
-                        _selectedImage = null;
-                        _savedImagePath = null;
-                      });
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('Add Room'),
+  void _addNewRoom() { //display dialog allowing the user to add a new room
+    showDialog( //show dialog box
+        context: context, //specified context (current build) for the dialog
+        builder: (BuildContext context) { //create dialog's content
+      return StatefulBuilder( //allow updating the UI within the dialog
+          builder: (context, setState) { //create dialog's content (setState updates the UI within the dialog)
+        return AlertDialog( //create AlertDialog widget
+            title: const Text('Add new room'), //dialog's title
+            content: Column( //arrange content vertically
+              mainAxisSize: MainAxisSize.min, //column takes up the minimum necessary space
+              children: [
+                TextField( //room's name
+                  controller: _roomNameController,
+                  decoration: const InputDecoration(labelText: 'Room name'),
                 ),
-                TextButton(
+                const SizedBox(height: 16), //add vertical space
+                if (_selectedImage != null) //render a preview if an image was selected
+                  Container( //container to show selected image
+                    height: 100, //container height
+                    width: 100, //container width
+                    decoration: BoxDecoration( //set container decoration
+                      image: DecorationImage( //set image decoration
+                        image: FileImage(_selectedImage!), //FileImage widget in order to show the selected image
+                        fit: BoxFit.cover, //ensure image covers the entire container
+                      ),
+                      borderRadius: BorderRadius.circular(8), //round corners for the container
+                    ),
+                  ),
+                ElevatedButton.icon( //ElevatedButton for selecting an image
                   onPressed: () {
-                    setState(() {
-                      _selectedImage = null;
-                      _savedImagePath = null;
-                    });
-                    _roomNameController.clear();
-                    _roomImageController.clear();
-                    Navigator.of(context).pop();
+                    _showImageSourceDialog(dialogSetState: setState); //show ImageSourceDialog and update the UI
                   },
-                  child: const Text('Cancel'),
+                  icon: const Icon(Icons.image), //image icon
+                  label: const Text('Select image'),
                 ),
               ],
+            ),
+            actions: [ //list of actions for the dialog
+            TextButton( //add room button
+            onPressed: () {
+          if (_roomNameController.text.trim().isEmpty) { //check if room name is empty
+            ScaffoldMessenger.of(context).showSnackBar( //show snackbar if the room name is empty
+              const SnackBar(content: Text('Please enter a room name')),
             );
-          },
+            return; //exit the function if the room name is empty
+          }
+
+          bool roomAdded = context.read<RoomDataProvider>().addRoom( //add the room using RoomDataProvider
+            _roomNameController.text, //room name
+            _savedImagePath ?? '',  //room image path (or empty string if there is no image)
+          );
+
+          if (!roomAdded) { //check if the room was successfully added
+            ScaffoldMessenger.of(context).showSnackBar( //show snackbar if an error occurs
+              const SnackBar(content: Text('Room already exists')),
+            );
+          } else { //if the room was successfully added
+            _roomNameController.clear(); //clear room's name text field
+            _roomImageController.clear(); //clear room's image path text field
+            Navigator.of(context).pop(); //close the dialog
+            setState(() { //update UI state
+              _selectedImage = null; //reset selected image
+              _savedImagePath = null; //reset saved image path
+            });
+            Navigator.of(context).pop(); //close the dialog
+          }
+        },
+    child: const Text('Add room'),
+    ),
+              TextButton( //cancel button (room)
+                onPressed: () {
+                  setState(() { //update UI state
+                    _selectedImage = null; //reset selected image
+                    _savedImagePath = null; //reset saved image path
+                  });
+                  _roomNameController.clear(); //clear room's name text field
+                  _roomImageController.clear(); //clear room's image path text field
+                  Navigator.of(context).pop(); //close the dialog
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
         );
-      },
+          },
+      );
+        },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, //set background color to white
       key: _scaffoldKey,
-      appBar: _buildAppBar(),
-      drawer: _buildDrawer(),
-      body: Column(
+      appBar: _buildAppBar(), //build the AppBar
+      drawer: _buildDrawer(), //build the Drawer
+      body: Column( //arrange content vertically
         children: [
-          const SizedBox(height: 20),
-          if (_isSearching)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                autofocus: true,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  hintText: 'Search your items...',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
+          const SizedBox(height: 20), //add vertical space
+          if (_isSearching) //conditionally render a search bar if _isSearching is true
+            Padding( //add padding around the search bar
+              padding: const EdgeInsets.all(16.0), //padding of 16 pixels
+              child: TextField( //TextField for searching
+                autofocus: true, //automatically focus on the searchbar
+                style: const TextStyle(color: Colors.black), //search bar text color set to black
+                decoration: const InputDecoration( //set decoration for text field
+                  hintText: 'Search your items...', //hint text
+                  hintStyle: TextStyle(color: Colors.grey), //hint text color set to grey
+                  border: OutlineInputBorder(), //border style
+                  filled: true, //fill the text field with a background color
+                  fillColor: Colors.white, //white fill color
                 ),
-                onChanged: _searchRooms,
+                onChanged: _searchRooms, //call _searchRooms function when the text changes
               ),
             ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1,
+          Expanded( //expand the GridView to fill the available space
+            child: GridView.builder( //create a GridView
+              padding: //add padding around the GridView
+                const EdgeInsets.all(20), //padding of 20 pixels
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount( //set GridView layout
+                crossAxisCount: 2, //number of columns
+                crossAxisSpacing: 16, //spacing between columns
+                mainAxisSpacing: 16, //spacing between rows
+                childAspectRatio: 1, //aspect ratio of the grid items (same height and width)
               ),
-              itemCount: _searchQuery.isNotEmpty
-                  ? _filteredItems.length
-                  : _filteredRooms.length,
-              itemBuilder: (context, index) {
-                if (_searchQuery.isNotEmpty) {
-                  final item = _filteredItems[index];
-                  return GestureDetector(
+              itemCount: _searchQuery.isNotEmpty //number of items to display based on whether a search query is active
+                  ? _filteredItems.length //number of filtered items to display if a search query is active
+                  : context.watch<RoomDataProvider>().rooms.length, //number of rooms to display if no search query is active
+              itemBuilder: (context, index) { //create each grid item
+                if (_searchQuery.isNotEmpty) { //if a search query contains text
+                  final item = _filteredItems[index];  //get item as specified index from the _filteredItems list
+                  return GestureDetector( //create GestureDetector to handle taps on the item
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ItemDetailsPage(
-                            item: item,
-                            onDelete: () {
-                              setState(() {
-                                _searchRooms(_searchQuery);
+                      Navigator.push( //push a new route
+                        context, //provide build context
+                        MaterialPageRoute( //create MaterialPageRoute to navigate to ItemDetailsPage
+                          builder: (context) => ItemDetailsPage( //build ItemDetailsPage widget
+                            item: item, //pass selected item data to the ItemDetailsPage
+                            onDelete: () { //callback function called when the item is deleted in ItemDetailsPage
+                              setState(() { //update UI state
+                                _searchRooms(_searchQuery); //refresh search results (the searched item has been now deleted so it shows no more)
                               });
                             },
                           ),
                         ),
                       );
                     },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        fit: StackFit.expand,
+                    child: ClipRRect( //clip the widget to a rounded rectangle
+                      borderRadius: BorderRadius.circular(12), //set border radius
+                      child: Stack( //arrange widgets in a stack
+                        fit: StackFit.expand, //expand the widgets to fill the available space
                         children: [
-                          item['image'].toString().startsWith('assets/')
-                              ? Image.asset(
-                            item['image'],
-                            fit: BoxFit.cover,
+                          item['image'].toString().startsWith('assets/') //check if the image path starts with 'assets/'
+                            ? Image.asset( //if the image path starts with 'assets/', load the image from the assets folder
+                              item['image'], //image path
+                              fit: BoxFit.cover, //ensure image covers the entire container
                           )
-                              : Image.file(
-                            File(item['image']),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, object, stackTrace) {
-                              return const Icon(Icons.error);
+                            : Image.file( //if the image path doesn't start with 'assets/' load the image from a file
+                              File(item['image']), //image path
+                              fit: BoxFit.cover, //ensure the image covers the entire container
+                              errorBuilder: (context, object, stackTrace) { //handle image loading errors
+                                return const Icon(Icons.error); //display error icon if the image fails to load
                             },
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withAlpha(100),
+                          Container( //container to add a gradient overlay
+                            decoration: BoxDecoration( //container decoration
+                              gradient: LinearGradient( //create a linear gradient
+                                begin: Alignment.topCenter, //starting point of the gradient
+                                end: Alignment.bottomCenter, //ending point of the gradient
+                                colors: [ //list of colors for the gradient
+                                  Colors.transparent, //transparent at the top
+                                  Colors.black.withAlpha(100), //semi-transparent black at the bottom (0 being completely transparent and 255 completely opaque)
                                 ],
                               ),
                             ),
                           ),
-                          Positioned(
-                            bottom: 12,
-                            left: 12,
-                            right: 12,
-                            child: Text(
+                          Positioned( //position the item name on top of the image
+                            bottom: 12, //bottom position
+                            left: 12, //left position
+                            right: 12, //right position
+                            child: Text( //display the item name
                               item['name'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              style: const TextStyle( //text style
+                                color: Colors.white, //white text color
+                                fontSize: 16, //font size
+                                fontWeight: FontWeight.bold, //bold font weight
                               ),
                             ),
                           ),
@@ -461,56 +441,56 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   );
-                } else {
-                  final room = _filteredRooms[index];
-                  return GestureDetector(
+                } else { //if  no search query is active
+                  final room = context.watch<RoomDataProvider>().rooms[index]; //get the room at the specified index from RoomDataProvider
+                  return GestureDetector( //create GestureDetector to handle taps on the room
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RoomDetailsPage(room: room),
+                      Navigator.push( //push a new route
+                        context, //provide build context
+                        MaterialPageRoute( //create MaterialPageRoute to navigate to RoomDetailsPage
+                          builder: (context) => RoomDetailsPage(room: room), //build RoomDetailsPage widget
                         ),
                       );
                     },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        fit: StackFit.expand,
+                    child: ClipRRect( //clip the widget to a rounded rectangle
+                      borderRadius: BorderRadius.circular(12), //set border radius
+                      child: Stack( //arrange widgets in a stack
+                        fit: StackFit.expand, //expand the widgets to fill the available space
                         children: [
-                          room['image'].toString().startsWith('assets/')
-                              ? Image.asset(
-                            room['image'],
-                            fit: BoxFit.cover,
+                          room['image'].toString().startsWith('assets/') //check if the image path starts with 'assets/'
+                            ? Image.asset( //if the image path starts with 'assets/', load the image from the assets folder
+                              room['image'], //image path
+                              fit: BoxFit.cover, //ensure image covers the entire container
                           )
-                              : Image.file(
-                            File(room['image']),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, object, stackTrace) {
-                              return const Icon(Icons.error);
+                            : Image.file( //if the image path doesn't start with 'assets/' load the image from a file
+                              File(room['image']), //image path
+                              fit: BoxFit.cover, //ensure the image covers the entire container
+                              errorBuilder: (context, object, stackTrace) { //handle image loading errors
+                                return const Icon(Icons.error); //display error icon if the image fails to load
                             },
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withAlpha(200),
+                          Container( //container to add a gradient overlay
+                            decoration: BoxDecoration( //container decoration
+                              gradient: LinearGradient( //create a linear gradient
+                                begin: Alignment.topCenter, //starting point of the gradient
+                                end: Alignment.bottomCenter, //ending point of the gradient
+                                colors: [ //list of colors for the gradient
+                                  Colors.transparent, //transparent at the top
+                                  Colors.black.withAlpha(200), //semi-transparent black at the bottom (0 being completely transparent and 255 completely opaque)
                                 ],
                               ),
                             ),
                           ),
-                          Positioned(
-                            bottom: 12,
-                            left: 12,
-                            right: 12,
-                            child: Text(
+                          Positioned(  //position the room name on top of the image
+                            bottom: 12, //bottom position
+                            left: 12, //left position
+                            right: 12, //right position
+                            child: Text( //display the room name
                               room['name'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              style: const TextStyle( //text style
+                                color: Colors.white, //white text color
+                                fontSize: 16, //font size
+                                fontWeight: FontWeight.bold, //bold font weight
                               ),
                             ),
                           ),
@@ -524,21 +504,21 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton( //create a FloatingActionButton
         onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Add New'),
-                content: const Text('Choose an option:'),
-                actions: [
-                  TextButton(
-                    onPressed: _addNewItem,
+          showDialog( //show a dialog box
+            context: context, //provide build context for the dialog
+            builder: (BuildContext context) { //builder functions that creates the dialog's content
+              return AlertDialog( //create AlertDialog widget
+                title: const Text('Add new'), //title of the dialog
+                content: const Text('Choose an option:'), //content of the dialog
+                actions: [ //list of actions for the dialog
+                  TextButton( //add new item button
+                    onPressed: _addNewItem, //call _addNewItem function when pressed
                     child: const Text('Add new item'),
                   ),
-                  TextButton(
-                    onPressed: _addNewRoom,
+                  TextButton( //add new room button
+                    onPressed: _addNewRoom, //call _addNewRoom function when pressed
                     child: const Text('Add new room'),
                   ),
                 ],
@@ -546,35 +526,42 @@ class _HomePageState extends State<HomePage> {
             },
           );
         },
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blue, //set button's background color to blue
+        child: const Icon(Icons.add), //add icon
       ),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: const Text(
-        'Itemize',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    return AppBar( //create AppBar widget
+      title: const Text( //title of the AppBar
+        'Itemize', //title text
+        style: TextStyle(
+            fontSize: 24, //font size
+            fontWeight: FontWeight.bold //bold font weight
+        ),
       ),
-      backgroundColor: Colors.white,
-      elevation: 0.0,
-      centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.black),
+      backgroundColor: Colors.white, //set background color to white
+      elevation: 0, //no shadow from the AppBar
+      centerTitle: true, //center the title
+      leading: IconButton( //IconButton on the leading (left) of the AppBar
+        icon: const Icon(Icons.menu, color: Colors.black), //black menu icon
         onPressed: () {
-          _scaffoldKey.currentState?.openDrawer();
+          _scaffoldKey.currentState?.openDrawer(); //open the drawer
         },
       ),
       actions: [
-        IconButton(
-          icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.black),
+        IconButton( //IconButton automatically added to the trailing (right) of the AppBar
+          icon: Icon(_isSearching //if _isSearching is active
+              ? Icons.close //show close icon
+              : Icons.search, //if _isSearching is not active show search icon
+              color: Colors.black //set icon color to black
+          ),
           onPressed: () {
-            setState(() {
-              _isSearching = !_isSearching;
-              if (!_isSearching) {
-                _searchRooms("");
+            setState(() { //update UI state
+              _isSearching = !_isSearching; //inverts _isSearching boolean value (from True to False, from IS searching to IS NOT searching)
+              if (!_isSearching) { //if _isSearching is not active
+                _searchRooms(""); //clear the search
               }
             });
           },
@@ -582,90 +569,90 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-  Widget _buildDrawer() {
-    return Consumer<RoomDataProvider>(
-        builder: (context, roomData, child) {
-          // Calcolo il numero totale di oggetti
-          int totalObjects = roomData.rooms.fold(0, (sum, room) {
-            return sum + (room['items'] as List).length;
-          });
 
-          // Calcolo il numero di categorie uniche
-          Set<String> uniqueCategories = {};
-          for (var room in roomData.rooms) {
-            for (var item in room['items'] as List) {
-              if (item['category'] != null && item['category'].toString().isNotEmpty) {
-                uniqueCategories.add(item['category'].toString());
+  Widget _buildDrawer() {
+    return Consumer<RoomDataProvider>( //access RoomDataProvider through Consumer
+        builder: (context, roomData, child) { //build the drawer based on RoomDataProvider data
+          int totalObjects = roomData.rooms.fold(0, (sum, room) { //calculate the total number of objects using fold to sum the lengths of all 'items' lists in each room
+            //fold iterates on a list and sums the result. 0 is the initial value and iterates for each element of the list
+            return sum + (room['items'] as List).length; //get the length (number of elements) of the list room['items'] and adds it to sum returning the new accumulator value
+          }
+          );
+
+          Set<String> uniqueCategories = {}; //Set automatically handles uniqueness
+          for (var room in roomData.rooms) { //iterates through each room
+            for (var item in room['items'] as List) { //iterates through each item in the room
+              if (item['category'] != null && item['category'].toString().isNotEmpty) { //check if the category is valid
+                uniqueCategories.add(item['category'].toString()); //add the category to the set
               }
             }
           }
 
-          // Numero di stanze
-          int totalRooms = roomData.rooms.length;
+          int totalRooms = roomData.rooms.length; //length of the rooms list
 
-          return Drawer(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                const UserAccountsDrawerHeader(
+          return Drawer( //create drawer widget
+            child: ListView( //display the drawer items
+              padding: EdgeInsets.zero, //remove default padding
+              children: [ //list of widgets to display in the drawer
+                const UserAccountsDrawerHeader( //user account header
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    color: Colors.blue, //header's background color set to blue
                   ),
-                  accountName: Text('User name'),
-                  accountEmail: Text('username@example.com'),
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: Colors.white,
+                  accountName: Text('User name'), //user's name
+                  accountEmail: Text('username@example.com'), //user's email
+                  currentAccountPicture: CircleAvatar( //circular avatar picture
+                    backgroundColor: Colors.white, //circular avatar picture background color set to white
                     child: Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Colors.blue,
+                      Icons.person, //person icon
+                      size: 50, //icon size
+                      color: Colors.blue, //icon color set to blue
                     ),
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.inventory),
+                ListTile( //ListTile for total objects
+                  leading: const Icon(Icons.inventory), //inventory icon
                   title: const Text('Objects: '),
                   trailing: Text(
-                    totalObjects.toString(),
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold
+                    totalObjects.toString(), //number of total objects
+                    style: const TextStyle( //text style
+                        fontSize: 16, //font size
+                        fontWeight: FontWeight.bold //bold font weight
                     ),
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.category),
+                ListTile( //ListTile for unique categories
+                  leading: const Icon(Icons.category), //category icon
                   title: const Text('Categories: '),
                   trailing: Text(
-                    uniqueCategories.length.toString(),
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold
+                    uniqueCategories.length.toString(), //number of unique categories
+                    style: const TextStyle( //text style
+                        fontSize: 16, //font size
+                        fontWeight: FontWeight.bold //bold font weight
                     ),
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.room),
+                ListTile( //ListTile for total rooms
+                  leading: const Icon(Icons.room), //room icon
                   title: const Text('Rooms: '),
                   trailing: Text(
-                    totalRooms.toString(),
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold
+                    totalRooms.toString(), //number of total rooms
+                    style: const TextStyle( //text style
+                        fontSize: 16, //font size
+                        fontWeight: FontWeight.bold //bold font weight
                     ),
                   ),
                 ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.info),
+                const Divider(), //create a divider
+                ListTile( //ListTile for credits
+                  leading: const Icon(Icons.info), //info icon
                   title: const Text('Credits'),
                   onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    Navigator.pop(context); //close the drawer
+                    ScaffoldMessenger.of(context).showSnackBar( //show snackbar with credits
                       const SnackBar(
                         content: Text(
                             'Made by Francesco Gorgone for University project'),
-                        duration: Duration(seconds: 2),
+                        duration: Duration(seconds: 2), //snackbar duration
                       ),
                     );
                   },
