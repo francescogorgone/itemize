@@ -11,13 +11,13 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+  Widget build(BuildContext context) { //build widget tree
+    return ChangeNotifierProvider( //provider manages RoomDataProvider
       create: (context) => RoomDataProvider(),
-      child: MaterialApp(
-        title: 'Itemize',
-        debugShowCheckedModeBanner: false,
-        home: HomePage(),
+      child: const MaterialApp(
+        title: 'Itemize', //application title
+        debugShowCheckedModeBanner: false, //hide debug banner
+        home: HomePage(), //set HomePage as initial route
       ),
     );
   }
