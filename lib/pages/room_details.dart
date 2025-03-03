@@ -5,47 +5,46 @@ import 'package:itemize/pages/item_details.dart';
 import 'package:itemize/providers/room_data_provider.dart';
 import 'package:image_picker/image_picker.dart';
 
-class RoomDetailsPage extends StatefulWidget {
-  final Map<String, dynamic> room;
+class RoomDetailsPage extends StatefulWidget { //StatefulWidget for dynamic updates
+  final Map<String, dynamic> room; //room data passed as a parameter
 
-  const RoomDetailsPage({super.key, required this.room});
+  const RoomDetailsPage({super.key, required this.room}); //constructor with required room data
 
   @override
   State<RoomDetailsPage> createState() => _RoomDetailsPageState();
 }
 
-class _RoomDetailsPageState extends State<RoomDetailsPage> {
-  final ImagePicker _picker = ImagePicker();
-  File? _selectedImage;
-  String? _savedImagePath;
+class _RoomDetailsPageState extends State<RoomDetailsPage> { //state class
+  final ImagePicker _picker = ImagePicker(); //image picker instance
+  File? _selectedImage; //selected image file (? meaning the variable can be null if no image was selected)
+  String? _savedImagePath; //path of the selected image (? meaning the variable can be null if no image was selected)
 
-  // Mostra il menu con le opzioni "Edit" e "Delete"
-  void _showRoomOptions() {
+  void _showRoomOptions() { //show 'Edit' and 'Delete' room options
     showModalBottomSheet(
       context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
+      builder: (context) { //create bottom sheet content
+        return SafeArea( //ensure content is within the safe area for correct displaying
+          child: Column( //arrange content vertically
             children: [
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Edit Room'),
+              ListTile( //ListTile for room editing
+                leading: const Icon(Icons.edit), //edit icon
+                title: const Text('Edit room'),
                 onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _selectedImage = null;
-                    _savedImagePath = null;
-                  }); // Reset image state
-                  _showEditRoomDialog();
+                  Navigator.pop(context); //close the bottom sheet
+                  setState(() { //update UI state
+                    _selectedImage = null; //reset selected image
+                    _savedImagePath = null; //reset saved image path
+                  });
+                  _showEditRoomDialog(); //show edit room dialog
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Delete Room'),
+              ListTile( //ListTile for room deleting
+                leading: const Icon(Icons.delete), //delete icon
+                title: const Text('Delete room'),
                 onTap: () {
-                  Navigator.pop(context);
-                  setState(() {}); // Refresh UI with updated data
-                  _showDeleteConfirmation();
+                  Navigator.pop(context); //close the bottom sheet
+                  setState(() {}); //update UI state
+                  _showDeleteConfirmation(); //show delete confirmation dialog
                 },
               ),
             ],
@@ -55,35 +54,34 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
     );
   }
 
-  // Dialog per scegliere la sorgente dell'immagine
-  void _showImageSourceDialog(Function(File, String) onImageSelected) {
+  void _showImageSourceDialog(Function(File, String) onImageSelected) { //callback function to handle the selected image
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Seleziona sorgente immagine'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          title: const Text('Select image source'), //dialog's title
+          content: Column( //arrange content vertically
+            mainAxisSize: MainAxisSize.min, //column takes up the minimum necessary space
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Galleria'),
+              ListTile( //ListTile for selecting the gallery
+                leading: const Icon(Icons.photo_library), //icon on the left
+                title: const Text('Gallery'),
                 onTap: () async {
-                  Navigator.pop(context);
+                  Navigator.pop(context); //close the dialog
                   final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-                  if (pickedFile != null) {
-                    onImageSelected(File(pickedFile.path), pickedFile.path);
+                  if (pickedFile != null) { //check if image was successfully picked
+                    onImageSelected(File(pickedFile.path), pickedFile.path);  //callback with image file and image path
                   }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Fotocamera'),
+              ListTile( //ListTile for selecting the camera
+                leading: const Icon(Icons.camera_alt), //icon on the left
+                title: const Text('Camera'),
                 onTap: () async {
-                  Navigator.pop(context);
-                  final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
-                  if (pickedFile != null) {
-                    onImageSelected(File(pickedFile.path), pickedFile.path);
+                  Navigator.pop(context); //close the dialog
+                  final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera); //pick image from the camera
+                  if (pickedFile != null) { //check if image was successfully picked
+                    onImageSelected(File(pickedFile.path), pickedFile.path); //callback with image file and image path
                   }
                 },
               ),
@@ -94,97 +92,92 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
     );
   }
 
-  // Dialog per modificare il nome della room
   void _showEditRoomDialog() {
     final TextEditingController roomNameController =
-    TextEditingController(text: widget.room['name']);
+    TextEditingController(text: widget.room['name']); //controller for room name input
 
-    // Inizializza l'immagine se esiste
-    if (widget.room['image'] != null && widget.room['image'].isNotEmpty) {
-      setState(() {
+    if (widget.room['image'] != null && widget.room['image'].isNotEmpty) { //check if a room image already exists
+      setState(() { //update UI state
         _savedImagePath = widget.room['image'];
         _selectedImage = File(widget.room['image']);
       });
     }
 
-    showDialog(
+    showDialog( //open dialog box
       context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                title: const Text('Modifica stanza'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
+      builder: (BuildContext dialogContext) { //create dialog's content
+        return StatefulBuilder( //allow updating the UI within the dialogue
+            builder: (context, setDialogState) { //create dialog's content (setState updates the UI within the dialog)
+              return AlertDialog( //create AlertDialog box
+                title: const Text('Edit room'), //dialog's title
+                content: Column( //arrange content vertically
+                  mainAxisSize: MainAxisSize.min, //column takes up the minimum necessary space
                   children: [
-                    TextField(
-                      controller: roomNameController,
-                      decoration: const InputDecoration(labelText: 'Nome della stanza'),
+                    TextField( //TextField for editing room's name
+                      controller: roomNameController, // controller managing TextField's input
+                      decoration: const InputDecoration(labelText: "Room's name"),
                     ),
-                    const SizedBox(height: 16),
-                    if (_selectedImage != null)
+                    const SizedBox(height: 16), //add vertical space
+                    if (_selectedImage != null) //if _selectedImage is not null
                       Container(
-                        height: 100,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: FileImage(_selectedImage!),
-                            fit: BoxFit.cover,
+                        height: 100, //container height
+                        width: 100, //container width
+                        decoration: BoxDecoration( //set container decoration
+                          image: DecorationImage( //set image decoration
+                            image: FileImage(_selectedImage!), //FileImage widget in order to show the selected image
+                            fit: BoxFit.cover, //ensure image covers the entire container
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8), //round corners for the container
                         ),
                       ),
-                    ElevatedButton.icon(
+                    ElevatedButton.icon( //ElevatedButton for selecting an image
                       onPressed: () {
-                        _showImageSourceDialog((File file, String path) {
-                          setState(() {
-                            _selectedImage = file;
-                            _savedImagePath = path;
+                        _showImageSourceDialog((File file, String path) { //select an image from gallery of from camera
+                          setState(() { //update UI state
+                            _selectedImage = file; //set the selected image
+                            _savedImagePath = path; //set the path of the selected image
                           });
-                          setDialogState(() {
-                            _selectedImage = file;
-                            _savedImagePath = path;
+                          setDialogState(() { //update dialog's state
+                            _selectedImage = file; //set the selected image in the dialog
+                            _savedImagePath = path; //set the path of the selected image in the dialog
                           });
                         });
                       },
-                      icon: const Icon(Icons.image),
-                      label: const Text('Seleziona Immagine'),
+                      icon: const Icon(Icons.image), //image icon
+                      label: const Text('Choose image'),
                     ),
                   ],
                 ),
-                actions: [
-                  TextButton(
+                actions: [ //button at the bottom of the dialog
+                  TextButton( //save changes button
                     onPressed: () {
-                      final newRoomName = roomNameController.text;
+                      final newRoomName = roomNameController.text; //retrieves the room name from the TextField
 
-                      // Ensure the room name doesn't already exist
-                      if (context.read<RoomDataProvider>().doesRoomExist(newRoomName) &&
-                          widget.room['name'] != newRoomName) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.read<RoomDataProvider>().doesRoomExist(newRoomName) && //check if a room with the same name already exists
+                          widget.room['name'] != newRoomName) { //check if the new name is different from the old one
+                        ScaffoldMessenger.of(context).showSnackBar( //show snackbar
                           const SnackBar(
-                            content: Text('La stanza esiste già'),
-                            duration: Duration(seconds: 2),
+                            content: Text('The room already exists'),
+                            duration: Duration(seconds: 2), //snackbar duration
                           ),
                         );
-                      } else {
-                        // Update the room details
-                        final updatedRoom = {
-                          'name': newRoomName,
-                          'image': _savedImagePath ?? widget.room['image'],
-                          'items': widget.room['items'], // Keep existing items
+                      } else { //if the room name is unique
+                        final updatedRoom = { //create a map containing the updated room data
+                          'name': newRoomName, //new room name
+                          'image': _savedImagePath ?? widget.room['image'], //new image path or old one no new image was selected
+                          'items': widget.room['items'], //keep the items already existing in the room
                         };
 
-                        // Update room data in the provider
-                        context.read<RoomDataProvider>().updateRoom(widget.room['name'], updatedRoom);
-                        Navigator.pop(context); // Close the dialog
-                        setState(() {}); // Refresh UI with updated data
+                        context.read<RoomDataProvider>().updateRoom(widget.room['name'], updatedRoom); //update room data in the provider
+                        Navigator.pop(context); //close the dialog
+                        setState(() {}); //update UI state
                       }
                     },
-                    child: const Text('Salva'),
+                    child: const Text('Save'),
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Annulla'),
+                  TextButton( //cancel the changes button
+                    onPressed: () => Navigator.pop(context), //close the dialog
+                    child: const Text('Cancel'),
                   ),
                 ],
               );
@@ -194,28 +187,26 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
     );
   }
 
-  // Dialog di conferma per eliminare la roorm
-  void _showDeleteConfirmation() {
-    showDialog(
+  void _showDeleteConfirmation() { //confirmation dialog before deleting a room
+    showDialog( //show dialog box
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Room'),
-          content: const Text(
-              'Are you sure you want to delete this room and all its items?'),
-          actions: [
+        return AlertDialog( //create AlertDialog box
+          title: const Text('Delete room'), //dialog's title
+          content: const Text('Are you sure you want to delete this room and all its items?'),
+          actions: [ //buttons at the bottom of the dialog
             TextButton(
               onPressed: () {
                 context
-                    .read<RoomDataProvider>()
-                    .deleteRoom(widget.room['name']);
-                Navigator.pop(context); // chiude il dialog
-                Navigator.pop(context); // torna indietro dopo la cancellazione
+                    .read<RoomDataProvider>() //access RoomDataProvider
+                    .deleteRoom(widget.room['name']); //call deleteRoom
+                Navigator.pop(context); //close the dialog
+                Navigator.pop(context); //close RoomDetailsPage
               },
               child: const Text('Delete'),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
+            TextButton( //button to cancel deletion
+              onPressed: () => Navigator.pop(context), //close the dialog box
               child: const Text('Cancel'),
             ),
           ],
@@ -225,55 +216,53 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) { //build the UI of the widget
     return Scaffold(
-      appBar: AppBar(
-        // AppBar con i tre puntini in alto a destra
-        title: Text(widget.room['name']),
-        actions: [
+      appBar: AppBar( //create AppBar
+        title: Text(widget.room['name']), //set the AppBar's title as the room's name
+        actions: [ //widget displayed on the right side of the AppBar
           IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showRoomOptions,
+            icon: const Icon(Icons.more_vert), //three vertical dots icon
+            onPressed: _showRoomOptions, //call _showRoomOptions function
           ),
         ],
       ),
-      body: ListView.builder(
-        // Lista scrollabile degli item della room
-        itemCount: widget.room['items'].length,
-        itemBuilder: (context, index) {
-          final item = widget.room['items'][index];
-          return ListTile(
-            leading: SizedBox(
-              width: 50,
-              height: 50,
-              child: item['image'].toString().startsWith('assets/')
-                  ? Image.asset(
-                item['image'],
-                fit: BoxFit.cover,
+      body: ListView.builder( //create a scrollable list of items
+        itemCount: widget.room['items'].length, //set number of items in the list
+        itemBuilder: (context, index) { //build each item in the list
+          final item = widget.room['items'][index]; //get the item at the specified index
+          return ListTile( //create a ListTile for each item
+            leading: SizedBox( //create SizedBox to contain item's image
+              width: 50, // SizedBox width
+              height: 50, //SizedBox height
+              child: item['image'].toString().startsWith('assets/') //check if the image path starts with 'assets/'
+                  ? Image.asset( //if the image path starts with 'assets/', load the image from the assets folder
+                item['image'], //image path
+                fit: BoxFit.cover, //ensure the image covers the entire SizedBox
               )
-                  : Image.file(
-                File(item['image']),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.error);
+                  : Image.file( //if the image path doesn't start with 'assets/' load the image from a file
+                File(item['image']), //image path
+                fit: BoxFit.cover, //ensure the image covers the entire SizedBox
+                errorBuilder: (context, error, stackTrace) { //handle image loading errors
+                  return const Icon(Icons.error); //display error icon if the image fails to load
                 },
               ),
             ),
-            title: Text(item['name']),
-            subtitle: Text(item['description']),
+            title: Text(item['name']), //set the ListTile's title as the item's name
+            subtitle: Text(item['description']), //set ListTile's subtitle as the item's description
             onTap: () async {
-              await Navigator.push(
+              await Navigator.push( //push a new route
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ItemDetailsPage(
-                    item: item,
-                    onDelete: () {
-                      setState(() {});
+                MaterialPageRoute( //create MaterialPageRoute to navigate to ItemDetailsPage
+                  builder: (context) => ItemDetailsPage( //build ItemDetailsPage widget
+                    item: item, //pass selected item data to the ItemDetailsPage
+                    onDelete: () { //callback function called when the item is deleted in ItemDetailsPage
+                      setState(() {}); //update UI state
                     },
                   ),
                 ),
               );
-              setState(() {});
+              setState(() {}); //update UI state
             },
           );
         },
